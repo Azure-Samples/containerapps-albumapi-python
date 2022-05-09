@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Album API",
+      "type": "shell",
+      "command": "uvicorn app.main:app --port 3000 --reload",
+      "options": {
+        "cwd": "${workspaceFolder}/src"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

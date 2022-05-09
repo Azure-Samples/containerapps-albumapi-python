@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Album API",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "cwd": "${workspaceFolder}/src",
+      "args": ["app.main:app", "--port", "3000", "--reload"]
+    }
+  ]
+}
