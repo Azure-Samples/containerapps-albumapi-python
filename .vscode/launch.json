@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/src",
-      "args": ["app.main:app", "--port", "3000", "--reload"]
+      "args": ["app.main:app", "--port", "3500", "--reload"]
     }
   ]
 }
