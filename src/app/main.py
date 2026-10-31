@@ -1,40 +1,55 @@
-from typing import Optional
+import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-app = FastAPI()
+from app.database import get_db
+from app.models import Album
+from app.schemas import AlbumResponse
+
+
+app = FastAPI(
+    title="Album API",
+    description="Album API backed by SQLAlchemy and Alembic",
+    version="1.0.0"
+)
+
+
+# Configure CORS through environment variables.
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000"
+    ).split(",")
+    if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods="GET",
+    allow_methods=["GET"],
     allow_headers=["*"]
 )
 
-class Album():
-    def __init__(self, id, title, artist, price, image_url):
-         self.id = id
-         self.title = title
-         self.artist = artist
-         self.price = price
-         self.image_url = image_url
-
-albums = [ 
-    Album(1, "You, Me and an App Id", "Daprize", 10.99, "https://aka.ms/albums-daprlogo"),
-    Album(2, "Seven Revision Army", "The Blue-Green Stripes", 13.99, "https://aka.ms/albums-containerappslogo"),
-    Album(3, "Scale It Up", "KEDA Club", 13.99, "https://aka.ms/albums-kedalogo"),
-    Album(4, "Lost in Translation", "MegaDNS", 12.99,"https://aka.ms/albums-envoylogo"),
-    Album(5, "Lock Down Your Love", "V is for VNET", 12.99, "https://aka.ms/albums-vnetlogo"),
-    Album(6, "Sweet Container O' Mine", "Guns N Probeses", 14.99, "https://aka.ms/albums-containerappslogo")
-]
 
 @app.get("/")
 def read_root():
-    return {"Access /albums to see the list of albums"}
+    return {"message": "Album API is running"}
 
 
-@app.get("/albums")
-def get_albums():
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
+@app.get("/albums", response_model=list[AlbumResponse])
+def get_albums(db: Session = Depends(get_db)):
+    statement = select(Album).order_by(Album.id)
+
+    albums = db.scalars(statement).all()
+
     return albums
