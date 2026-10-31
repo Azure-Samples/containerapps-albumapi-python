@@ -39,3 +39,33 @@ jobs:
           tags: |
             ca7e04894508acr.azurecr.io/album-api:latest
             ca7e04894508acr.azurecr.io/album-api:${{ github.sha }}
+  deploy:
+    name: Deploy API to Azure Container Apps
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - name: Login to Azure using deployment identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Container Apps CLI extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Deploy API image
+        run: |
+          az containerapp update \
+            --name album-api \
+            --resource-group rg-azure-container-apps-dev \
+            --image ca7e04894508acr.azurecr.io/album-api:${{ github.sha }}
+
+      - name: Verify deployment
+        run: |
+          az containerapp show \
+            --name album-api \
+            --resource-group rg-azure-container-apps-dev \
+            --query "{image:properties.template.containers[0].image,latestRevision:properties.latestRevisionName}" \
+            --output table
