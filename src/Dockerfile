@@ -6,7 +6,6 @@ WORKDIR /code
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV DATABASE_URL=sqlite:////data/albums.db
 
 # Install Microsoft ODBC Driver 18 for SQL Server.
 RUN set -eux; \
