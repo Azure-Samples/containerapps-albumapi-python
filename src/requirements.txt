@@ -4,3 +4,4 @@ uvicorn[standard]>=0.30,<1.0
 SQLAlchemy>=2.0,<3.0
 alembic>=1.13,<2.0
 pyodbc>=5.0,<6.0
+azure-identity>=1.17,<2.0
