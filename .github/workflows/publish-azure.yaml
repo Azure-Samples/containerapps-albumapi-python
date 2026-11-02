@@ -39,12 +39,21 @@ jobs:
           tags: |
             ca7e04894508acr.azurecr.io/album-api:latest
             ca7e04894508acr.azurecr.io/album-api:${{ github.sha }}
+
   deploy:
     name: Deploy API to Azure Container Apps
     runs-on: ubuntu-latest
     needs: publish
 
     steps:
+      # The template lives in the deployment repo, which owns all IaC.
+      - name: Checkout deployment repository
+        uses: actions/checkout@v4
+        with:
+          repository: JacobusTheOne/album-app-deployment
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          path: deployment
+
       - name: Login to Azure using deployment identity
         uses: azure/login@v2
         with:
@@ -52,15 +61,23 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # Deploying the template rather than `az containerapp update --image`
+      # keeps Bicep the single source of truth: an imperative image update
+      # would be rolled back by the next deployment, and would never apply
+      # the probes or identity configuration the template declares.
+      - name: Deploy API with Bicep
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          az deployment group create \
+            --resource-group rg-azure-container-apps-dev \
+            --template-file deployment/infra/api.bicep \
+            --parameters apiImageTag='${{ github.sha }}' \
+                         databaseUrl="$DATABASE_URL"
+
+      # az deployment needs no extension, but az containerapp does.
       - name: Install Container Apps CLI extension
         run: az extension add --name containerapp --upgrade
-
-      - name: Deploy API image
-        run: |
-          az containerapp update \
-            --name album-api \
-            --resource-group rg-azure-container-apps-dev \
-            --image ca7e04894508acr.azurecr.io/album-api:${{ github.sha }}
 
       - name: Verify deployment
         run: |
