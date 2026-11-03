@@ -1,9 +1,15 @@
 
 import os
 import struct
+import time
+import logging
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event
+from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -21,6 +27,7 @@ engine = create_engine(
     connect_args=connect_args,
     pool_pre_ping=True
 )
+
 
 # Configure Microsoft Entra access-token authentication for Azure SQL.
 if DATABASE_URL.startswith("mssql+pyodbc"):
@@ -56,6 +63,75 @@ if DATABASE_URL.startswith("mssql+pyodbc"):
             **cparams.get("attrs_before", {}),
             1256: token_struct
         }
+
+
+# Azure SQL reports an unavailable or still-resuming database as either of
+# these, depending on whether the failure lands in the TCP connect or the
+# login that follows.
+TRANSIENT_CONNECTION_ERRORS = (OperationalError, InterfaceError)
+
+
+@contextmanager
+def connect_with_retry(max_attempts=6, initial_delay=2, max_delay=15):
+    """
+    Yield a live database connection, retrying transient failures.
+
+    The connection yielded is the one the caller goes on to use, rather than
+    a throwaway opened only to test availability. A database resuming from
+    auto-pause can refuse connections for a minute or more, so the caller
+    would otherwise fail before doing any work.
+
+    Only the connect is retried. A failure raised by the caller's own work
+    propagates untouched, because replaying a partially applied migration
+    is far more dangerous than failing loudly.
+    """
+    delay = initial_delay
+
+    for attempt in range(1, max_attempts + 1):
+        connection = None
+
+        try:
+            connection = engine.connect()
+            # Connecting can succeed against a database that cannot yet
+            # serve queries, so confirm it really is reachable.
+            connection.exec_driver_sql("SELECT 1")
+
+        except TRANSIENT_CONNECTION_ERRORS as exc:
+            if connection is not None:
+                connection.close()
+
+            if attempt == max_attempts:
+                logger.exception(
+                    "Database connection failed after %s attempts",
+                    max_attempts
+                )
+                raise
+
+            logger.warning(
+                "Database unavailable. Attempt %s/%s failed. "
+                "Retrying in %s seconds. Error: %s",
+                attempt,
+                max_attempts,
+                delay,
+                exc
+            )
+
+            time.sleep(delay)
+            delay = min(delay * 2, max_delay)
+
+        else:
+            logger.info(
+                "Database connection established on attempt %s/%s",
+                attempt,
+                max_attempts
+            )
+
+            try:
+                yield connection
+            finally:
+                connection.close()
+
+            return
 
 
 SessionLocal = sessionmaker(

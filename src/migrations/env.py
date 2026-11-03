@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 from alembic import context
 
-from app.database import Base, engine
+from app.database import Base, engine, connect_with_retry
 from app import models  # Registers Album with Base.metadata
 
 
@@ -36,7 +36,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations using an actual database connection."""
 
-    with engine.connect() as connection:
+    with connect_with_retry() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
