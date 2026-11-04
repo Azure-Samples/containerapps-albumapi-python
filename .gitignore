@@ -10,7 +10,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -231,3 +232,7 @@ cython_debug/
 *.db
 *.db-shm
 *.db-wal
+
+.venv/
+__pycache__/
+.pytest_cache/

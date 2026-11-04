@@ -38,6 +38,10 @@ jobs:
         run: |
           python -m compileall -q src/app src/migrations
 
+      - name: Run backend tests
+        working-directory: ./src
+        run: python -m pytest -v
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

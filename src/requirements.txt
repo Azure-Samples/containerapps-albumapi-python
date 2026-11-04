@@ -5,3 +5,5 @@ SQLAlchemy>=2.0,<3.0
 alembic>=1.13,<2.0
 pyodbc>=5.0,<6.0
 azure-identity>=1.17,<2.0
+pytest>=8.0,<9.0
+httpx>=0.27,<1.0
